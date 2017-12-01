@@ -2,11 +2,13 @@
 
 A simple extension of SVGD is used where the posterior distribution at each step 
 
-$$p(x_t | y_t)$$ is approximated using a set of SVGD particles. 
+p(x_t | y_t) is approximated using a set of SVGD particles. 
 
 These particles are then passed through the transition density (similar to regular particle filtering)
 
-$$p(x_{t}|x_{t-1})$$
+p(x_{t+1}|x_{t})
+
+where the process is repeated.
 
 
 # Stein Variational Gradient Descent (SVGD)
