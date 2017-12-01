@@ -1,3 +1,14 @@
+# This repo has been adapted to the purpose of SVGD for time series
+
+A simple extension of SVGD is used where the posterior distribution at each step 
+
+$$p(x_t | y_t)$$ is approximated using a set of SVGD particles. 
+
+These particles are then passed through the transition density (similar to regular particle filtering)
+
+$$p(x_{t}|x_{t-1})$$
+
+
 # Stein Variational Gradient Descent (SVGD)
 SVGD is a general purpose variational inference algorithm that forms a natural counterpart of gradient descent for optimization. SVGD iteratively transports a set of particles to match with the target distribution, by applying a form of functional gradient descent that minimizes the KL divergence.
 
