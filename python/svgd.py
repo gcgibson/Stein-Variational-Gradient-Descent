@@ -24,7 +24,7 @@ class SVGD():
         return (Kxy, dxkxy)
     
  
-    def update(self, x0, lnprob, n_iter = 1000, stepsize = 1e-3, bandwidth = -1, alpha = 0.9, debug = False):
+    def update(self, x0,t, lnprob, n_iter = 1000, stepsize = 1e-3, bandwidth = -1, alpha = 0.9, debug = False):
         # Check input
         if x0 is None or lnprob is None:
             raise ValueError('x0 or lnprob cannot be None!')
@@ -38,10 +38,10 @@ class SVGD():
             if debug and (iter+1) % 1000 == 0:
                 print 'iter ' + str(iter+1) 
             
-            lnpgrad = lnprob(theta)
+            lnpgrad = lnprob(theta,t)
             # calculating the kernel matrix
             kxy, dxkxy = self.svgd_kernel(theta, h = -1)  
-            grad_theta = (np.matmul(kxy, lnpgrad) + dxkxy) / x0.shape[0]  
+	    grad_theta = (np.matmul(kxy, lnpgrad) + dxkxy) / x0.shape[0]  
             
             # adagrad 
             if iter == 0:

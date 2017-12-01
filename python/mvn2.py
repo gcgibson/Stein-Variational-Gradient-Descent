@@ -7,9 +7,12 @@ class MVN:
         self.mu = mu
         self.A = A
     
-    def dlnprob(self, theta):
-        return -1*np.matmul(theta-nm.repmat(self.mu, theta.shape[0], 1), self.A)
-    
+    def dlnprob(self, theta,t):
+        x= -1*np.matmul(theta-nm.repmat(self.mu, theta.shape[0], 1), self.A)
+	print ("-----")
+    	print (x.shape)
+	print ("-----")
+	return x
 if __name__ == '__main__':
     A = np.array([[0.2260,0.1652],[0.1652,0.6779]])
     mu = np.array([-0.6871,0.8010])
@@ -17,7 +20,7 @@ if __name__ == '__main__':
     model = MVN(mu, A)
     
     x0 = np.random.normal(0,1, [10,2]);
-    theta = SVGD().update(x0, model.dlnprob, n_iter=1000, stepsize=0.01)
+    theta = SVGD().update(x0,0, model.dlnprob, n_iter=1000, stepsize=0.01)
     
     print "ground truth: ", mu
     print "svgd: ", np.mean(theta,axis=0)
