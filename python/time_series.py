@@ -104,5 +104,5 @@ if __name__ == '__main__':
     print "\n"
     print "time series", time_series
     plt.plot(range(len(time_series)),time_series,color='blue')
-    plt.fill_between(range(len(time_series)), filtered_means + np.sqrt(filtered_covs),filtered_means - np.sqrt(filtered_covs))
+    plt.fill_between(range(len(time_series)), filtered_means + 2*np.sqrt(filtered_covs),filtered_means - 2*np.sqrt(filtered_covs))
     plt.show()
