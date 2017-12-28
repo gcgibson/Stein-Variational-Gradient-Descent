@@ -1,6 +1,8 @@
-import numpy as np
+from autograd import numpy as np
+from autograd import grad, jacobian
 import numpy.matlib as nm
 from svgd import SVGD
+import sys
 #from mpltools import style
 #from mpltools import layout
 
@@ -13,96 +15,70 @@ num_particles = 50
 
 import matplotlib.pyplot as plt
 
-def transition(particles):
-    return particles + .001*np.random.randn(num_particles,1)
-    N = len(particles)
-    beta = 2#beta_global#*(1+.01*np.cos(2*np.pi*t/52))
-    gamma = 1.4
-    # We have to use the 4th order RUNG-KATTA
-    theta_s_t_minus_1 = particles[:,0].astype(float)
-    theta_i_t_minus_1 = particles[:,1].astype(float)
-    theta_r_t_minus_1 = particles[:,2].astype(float)
-    
-    k_s1 = -beta*theta_s_t_minus_1*theta_i_t_minus_1
-    k_i1 = beta*theta_s_t_minus_1*theta_i_t_minus_1 -gamma*theta_i_t_minus_1
-    k_r1 = gamma*theta_i_t_minus_1
-    
-    k_s2 = -beta*(theta_s_t_minus_1 + .5*k_s1)*(theta_i_t_minus_1 + .5*k_i1)
-    k_i2 = beta*(theta_s_t_minus_1+.5*k_s1)*(theta_i_t_minus_1+.5*k_i1) - \
-    gamma*(theta_i_t_minus_1 + .5*k_i1)
-    k_r2 = gamma*(theta_i_t_minus_1+.5*k_i1)
-    
-    
-    k_s3 = -beta*(theta_s_t_minus_1 + .5*k_s2)*(theta_i_t_minus_1 +.5*k_i2)
-    k_i3 = beta*(theta_s_t_minus_1 + .5*k_s2)*(theta_i_t_minus_1 + .5*k_i2)\
-    - gamma*(theta_i_t_minus_1+ .5*k_i2)
-    k_r3 = gamma*(theta_i_t_minus_1 + .5*k_i2)
-    
-    k_s4 = -beta*(theta_s_t_minus_1+ k_s3)*(theta_i_t_minus_1 + k_i3)
-    k_i4 = beta*(theta_s_t_minus_1+k_s3)*(theta_i_t_minus_1 +k_i3 ) \
-        - gamma*(theta_i_t_minus_1+k_i3)
-    k_r4= gamma*(theta_i_t_minus_1 +k_i3 )
-    
-    theta_s_t_minus_1 += .16*(k_s1 + 2*k_s2 + 2*k_s3 + k_s4)
-    theta_i_t_minus_1 += .16*(k_i1 + 2*k_i2 + 2*k_i3 + k_i4)
-    theta_r_t_minus_1 += .16*(k_r1 + 2*k_r2 + 2*k_r3 + k_r4)
-    
-    new_particles = []
-    for i in range(len(theta_s_t_minus_1)):
-        p_vals = np.array([theta_s_t_minus_1[i],theta_i_t_minus_1[i],\
-                                                  theta_r_t_minus_1[i]])
-        p_vals = 2e3*p_vals
-        new_particles.append(np.random.dirichlet(p_vals).tolist())
-    
+#-(1.0/(2*observation_variance))*(theta_i  -  time_series[t])**2  + np.log(1.0/np.sqrt(np.pi*2*observation_variance))
+observation_variance = .00000000001
+transition_variance = 1000
+seasonality = 4
 
-    return np.array(new_particles)
+G = np.matrix([[np.cos(2*np.pi/seasonality),np.sin(2*np.pi/seasonality)],[-np.sin(2*np.pi/seasonality),np.cos(2*np.pi/seasonality)]])
 
+class StateSpaceModel:
 
-
-class MVN:
-    def __init__(self, mu, A):
-        self.mu = mu
-        self.A = A
+    def lnprob_theta_i(self, theta_i, theta_t_minus_1, time_series,t):
+        #ln poisson observations
+            lnprob_theta_i = -np.exp(theta_i[0]) + time_series[t]*theta_i[0] - np.sum(np.log(np.arange(time_series[t])+1))
+            transition_sum = 0
+            for theta_t_minus_1_i in theta_t_minus_1:
+                tmp = np.transpose(np.matmul(G,theta_t_minus_1_i.reshape((-1,1)))).tolist()[0]
+              
+                transition_sum += 1.0/(np.sqrt(2*np.pi*transition_variance))*np.exp(-.5*(1.0/transition_variance)*((theta_i - tmp )**2))
+                
+            return (lnprob_theta_i+np.log(transition_sum))
     
-    def dlnprob(self, theta,old_theta,time_series,t):
-        updated_theta_gradient = []
-        for k in range(len(theta)):
-            temporary_sum_numerator = 0
-            temporary_sum_denominator = 0
-            for j in range(len(old_theta)):
-                temporary_sum_numerator += 1/np.sqrt(2*np.pi)*np.exp(1/2*(theta[k]-old_theta[j])**2)*(old_theta[j]-theta[k])
-                temporary_sum_denominator+= 1/np.sqrt(2*np.pi)*np.exp(1/2*(theta[k]-old_theta[j])**2)
-            updated_theta_gradient.append(temporary_sum_numerator/temporary_sum_denominator + (time_series[t]-theta[k]))
-            
-        return updated_theta_gradient
+    def dlnprob(self, theta_i,theta_t_minus_1,time_series, t):
+        return (grad(self.lnprob_theta_i)(theta_i, theta_t_minus_1, time_series,t))
+    
+    def grad_overall(self, theta,theta_t_minus_1,time_series, t):
+        return_matrix = []
+
+        for theta_i in theta:
+            return_matrix.append(self.dlnprob(theta_i,theta_t_minus_1 ,time_series,t))
+    
+        return np.array(return_matrix)
     
 if __name__ == '__main__':
     filtered_means = []
     filtered_covs = []
-    A = np.array([1])
-    mu = np.array([1])
-    model = MVN(mu, A)
-    time_series = time_series[:20]     
-    x0 = np.random.normal(0,1,[num_particles,1])#0,1, [100,3]);
-    theta = SVGD().update(x0,0,np.zeros((num_particles,1)),time_series, model.dlnprob, n_iter=1000, stepsize=0.01)
+
+    n_iter = 1000
+
+    time_series = np.round(np.power(np.sin(range(20)),2)*10 + 10)
+
+    model = StateSpaceModel()
+    num_particles = 3
+    x0 = np.random.normal(0,10,[num_particles,2]).astype(float)
+    
+    theta = SVGD().update(x0,0,x0,time_series, model.grad_overall, n_iter=n_iter, stepsize=0.01)
     #theta = p(x_0|y_0)
+
     
-    
+   
     filtered_means.append(np.mean(theta,axis=0)[0])
     filtered_covs.append(np.var(theta,axis=0)[0])
     
     for t in range(1,len(time_series)):
-      theta_plus_1 = transition(theta)
       print (t)
-      theta = SVGD().update(theta_plus_1,t,theta, time_series, model.dlnprob, n_iter=1000, stepsize=0.01)
+      theta = SVGD().update(theta,t,theta, time_series, model.grad_overall, n_iter=n_iter, stepsize=0.01)
       filtered_means.append(np.mean(theta,axis=0)[0])
       filtered_covs.append(np.var(theta,axis=0)[0])
 
+    print (np.array(filtered_means).shape)
     print "svgd: ", filtered_means
     print "\n"
     print "svgd var", filtered_covs
     print "\n"
     print "time series", time_series
-    plt.plot(range(len(time_series)),time_series,color='blue')
-    plt.fill_between(range(len(time_series)), filtered_means + 2*np.sqrt(filtered_covs),filtered_means - 2*np.sqrt(filtered_covs))
+    plt.plot(range(len(time_series[5:])),time_series[5:],color='blue')
+    plt.plot(range(len(time_series[5:])),np.exp(filtered_means[5:]),color='orange')
+    plt.fill_between(range(len(time_series[5:])), np.exp(filtered_means[5:]) + 2*np.sqrt(np.exp(filtered_covs[5:])),np.exp(filtered_means[5:]) - 2*np.sqrt(np.exp(filtered_covs[5:])))
     plt.show()
