@@ -49,16 +49,17 @@ class StateSpaceModel:
 if __name__ == '__main__':
     filtered_means = []
     filtered_covs = []
-
+    total_thetas = []
     n_iter = 1000
 
-    time_series = np.round(np.power(np.sin(range(20)),2)*10 + 10)
+    time_series = np.round(np.power(np.sin(np.arange(10)+1),2)*10 + 10)
 
     model = StateSpaceModel()
-    num_particles = 3
+    num_particles = 10
     x0 = np.random.normal(0,10,[num_particles,2]).astype(float)
     
     theta = SVGD().update(x0,0,x0,time_series, model.grad_overall, n_iter=n_iter, stepsize=0.01)
+    total_thetas.append(theta)
     #theta = p(x_0|y_0)
 
     
@@ -67,18 +68,12 @@ if __name__ == '__main__':
     filtered_covs.append(np.var(theta,axis=0)[0])
     
     for t in range(1,len(time_series)):
-      print (t)
       theta = SVGD().update(theta,t,theta, time_series, model.grad_overall, n_iter=n_iter, stepsize=0.01)
+      total_thetas.append(theta)
       filtered_means.append(np.mean(theta,axis=0)[0])
       filtered_covs.append(np.var(theta,axis=0)[0])
-
-    print (np.array(filtered_means).shape)
-    print "svgd: ", filtered_means
-    print "\n"
-    print "svgd var", filtered_covs
-    print "\n"
-    print "time series", time_series
-    plt.plot(range(len(time_series[5:])),time_series[5:],color='blue')
-    plt.plot(range(len(time_series[5:])),np.exp(filtered_means[5:]),color='orange')
-    plt.fill_between(range(len(time_series[5:])), np.exp(filtered_means[5:]) + 2*np.sqrt(np.exp(filtered_covs[5:])),np.exp(filtered_means[5:]) - 2*np.sqrt(np.exp(filtered_covs[5:])))
-    plt.show()
+    
+    return_list = filtered_means + filtered_covs
+    myList = ','.join(map(str,np.array(total_thetas).flatten() ))
+    print (myList)
+   

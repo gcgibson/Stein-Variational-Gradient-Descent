@@ -36,8 +36,8 @@ class SVGD():
         historical_grad = 0
         for iter in range(n_iter):
             if debug and (iter+1) % 1000 == 0:
-                print 'iter ' + str(iter+1) 
-            
+                #print 'iter ' + str(iter+1) 
+                pass
             lnpgrad = dlnprob(theta,theta_t_minus_1,time_series,t)
             # calculating the kernel matrix
             kxy, dxkxy = self.svgd_kernel(theta, h = -1)  
